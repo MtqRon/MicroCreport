@@ -57,33 +57,15 @@
 }
 
 
-\title{
-    % 学科，学年
-    制御情報システム工学科4年 \\
-    % 科目名
-    制御工学実験II \\
-    % 実験テーマ
-
+\title{\vspace{-4cm}
+制御工学実験Ⅱ　テーマ：マイコン基礎応用
 }
 \author{
-    熊本高等専門学校 制御情報システム工学科 \\
-    4年 11番 後藤良誓
+    制御情報システム工学科 4年　10番　國安柾希
 }
-\date{
-    \today
-}
+
 \begin{document}
 \maketitle
-
-
-\newpage
-\begin{tabularx}{\textwidth}{|p{40mm}|X|} \hline
-    実験場所             & 5号棟 3階 ICT活用アクティブラーニングルーム\\ \hline
-    共同実験者           & \\ \hline
-    実験日(第1週，第2週) & 令和5年月日(水曜日) \\ \hline
-    レポート締切日       & 令和5年月日(火曜日) \\ \hline
-    レポート提出日       & 令和5年月日(曜日) \\ \hline
-\end{tabularx}
 
 \subsection*{実施評価}
 \begin{tabularx}{\textwidth}{|p{130mm}|C|C|} \hline
@@ -122,30 +104,111 @@
     \end{tabularx}
 \end{center}
 
+\newpage
+
 \section{実験目的}
 
+今までの実験では，PCで作成したプログラムをArduinoに書き込んで実行してきた．しかし，Arduinoへの書き込みのみでは，要求する動作が複数ある場合，選択することが困難になる場合がある．
+それを解決するために，今回の実験では，Arduinoのプログラムを書き込んだ後にArduinoとPC間でシリアル通信を行って，PCからコマンドを送信してハードウエアの制御を行う．
+また，Webサイトから必要な情報を収集し実際に実装することで，具体的な知識やスキルを身に着け，そのシステム構築を通して，PCとArduinoの連携を利用した，より複雑なシステムの構築方法を身に着ける．
 
 % タイトルは自分で考える
 % 「実験目的」で出したキーワードについて，数式やフローチャート，図や表を利用して詳細な仕組みを説明する．
-\section{}
 
+\section{構築した組み込みシステム}
+\subsection{実験課題}
+以下の条件を満たすシステムを構築する
+% 半固定抵抗のつまみの角度（位置）に対応してサーボモータの
+% 角度を変える（自動車のパワーステアリングのイメージ）
+\begin{itemize}
+    \item 入力：シリアル通信（Rx），半固定抵抗（10kΩ）
+    \item 出力：シリアル通信（Tx），赤黄LEDを各1個，サーボモータ
+    \item 動作：\begin{enumerate}
+        \item PCからコマンド操作（シリアルモニタから文字列を送信して操作）
+        “r,ooo”: 赤色LEDをoooの明るさにする（oooは0-255の整数）
+        “y,ooo”: 黄色LEDをoooの明るさにする
+        “w,ooo,OOO”: 赤色LEDをooo,黄色LEDをOOOの明るさにする
+        “s”: 赤色LEDと黄色LEDの現在の明るさをPCに送る
+        \item 半固定抵抗のつまみの角度（位置）に対応してサーボモータの角度を変える（自動車のパワーステアリングのイメージ）
+    \end{enumerate}
+\end{itemize}
 
-\section{実験方法}
-\begin{table}[H]
-    \centering
-    \begin{tabular}{|c|c|} \hline
-        名称       &  備考        \\ \hline
-        & \\ \hline
-        & \\ \hline
-    \end{tabular}
-    \label{tab:devices-used}
-    \caption{実験機器}
-\end{table}
-
-\section{実験結果}
-
+\subsection{実験結果}
+作成したシステムのプログラム，回路図を以下に示す．
+\newpage
+\begin{lstlisting}[caption=,label=]
+  
+  #include <Servo.h> //ライブラリ<Servo.h>を組み込む
+  #define RPIN 5
+  #define YPIN 3
+  #define RLPIN A1
+  #define YLPIN A2
+  
+  int value;
+  
+  Servo sv; //Servoオブジェクト“sv”を作成する
+  
+  void setup() {
+   Serial.begin(9600); //シリアル通信のデータ転送レートを9600ビット/秒に設定する
+   // Servo
+   //svの出力をリセットした上で、D6番ピンに割り当て、パルス幅を500～2400マイクロ秒とする
+   sv.attach(6, 500, 2400);
+   
+   // led
+   pinMode(RPIN, OUTPUT);
+   digitalWrite(RPIN, LOW);
+   pinMode(YPIN, OUTPUT);
+   digitalWrite(YPIN, LOW);
+  }
+  
+  void loop() {
+    // servo
+    int angle = analogRead(0) ; //変数angleをA0番ピンの入力値とする
+    //angleを500～2400の整数値に変換してD6番端子に出力する
+    sv.writeMicroseconds(map(angle, 0, 1023, 500, 2400)) ;
+    delay(20) ;
+   
+    //  led
+    while (Serial.available()) {
+      String str = Serial.readString();//cmd = str
+      char ini = str[0];
+  
+      if(ini == 'r'||ini == 'y'){
+        int value = str.substring(2).toInt();
+        Serial.println(value);
+        if(ini == 'r'){
+          analogWrite(RPIN,value);
+          delay(20);
+        }else{
+          analogWrite(YPIN,value);
+          delay(20);
+        }
+      }else if(ini == 'w'){
+        int Comma = str.indexOf(",", 2);
+        int value_r = str.substring(2, indexComma2).toInt();
+        int value_y = str.substring(indexComma2+1).toInt();
+        Serial.println(value_r);
+        Serial.println(value_y);
+        analogWrite(RPIN, value_r);
+        analogWrite(YPIN, value_y);
+      }else if(ini == 's'){
+        int value_r = map(analogRead(RLPIN),0,1023,0,255);
+        int value_y = map(analogRead(YLPIN),0,1023,0,255);
+        Serial.println("==== status ====");
+        Serial.println("RED LED : ");
+        Serial.println(value_r);
+        Serial.println("YELLOW LED : ");
+        Serial.println(value_y);
+      }
+      
+    }
+  }
+    
+\end{lstlisting}
 
 \section{考察}
+
+
 
 
 \section{感想}
