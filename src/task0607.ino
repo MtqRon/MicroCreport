@@ -44,8 +44,8 @@ void loop() {
       }
     }else if(ini == 'w'){
       int Comma = str.indexOf(",", 2);
-      int value_r = str.substring(2, indexComma2).toInt();
-      int value_y = str.substring(indexComma2+1).toInt();
+      int value_r = str.substring(2, Comma).toInt();
+      int value_y = str.substring(Comma+1).toInt();
       Serial.println(value_r);
       Serial.println(value_y);
       analogWrite(RPIN, value_r);
@@ -59,6 +59,5 @@ void loop() {
       Serial.println("YELLOW LED : ");
       Serial.println(value_y);
     }
-    
   }
 }
